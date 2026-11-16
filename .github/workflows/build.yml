@@ -1,0 +1,35 @@
+
+name: Build Green Edge Overlay
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build macOS application
+        run: |
+          xcodebuild \
+            -project GreenEdgeOverlay_GitHubBuild/GreenEdgeOverlay.xcodeproj \
+            -scheme GreenEdgeOverlay \
+            -configuration Release \
+            -derivedDataPath "$RUNNER_TEMP/Build" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package application
+        run: |
+          APP="$RUNNER_TEMP/Build/Build/Products/Release/GreenEdgeOverlay.app"
+          test -d "$APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" GreenEdgeOverlay-macOS.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GreenEdgeOverlay-macOS
+          path: GreenEdgeOverlay-macOS.zip
+
