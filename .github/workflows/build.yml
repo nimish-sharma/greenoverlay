@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: macos-15
+
     steps:
       - uses: actions/checkout@v4
 
@@ -32,4 +33,4 @@ jobs:
         with:
           name: GreenEdgeOverlay-macOS
           path: GreenEdgeOverlay-macOS.zip
-
+          retention-days: 7
