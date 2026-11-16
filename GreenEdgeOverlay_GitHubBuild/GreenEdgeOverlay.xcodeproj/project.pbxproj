@@ -1,0 +1,25 @@
+// !$*UTF8*$!
+{
+  archiveVersion = 1;
+  classes = {};
+  objectVersion = 56;
+  objects = {
+    A10000000000000000000001 /* GreenEdgeOverlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GreenEdgeOverlayApp.swift; sourceTree = "<group>"; };
+    A10000000000000000000002 /* GreenEdgeOverlay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GreenEdgeOverlay.app; sourceTree = BUILT_PRODUCTS_DIR; };
+    A10000000000000000000003 = {isa = PBXBuildFile; fileRef = A10000000000000000000001; };
+    A10000000000000000000004 = {isa = PBXGroup; children = (A10000000000000000000005, A10000000000000000000006,); sourceTree = "<group>"; };
+    A10000000000000000000005 = {isa = PBXGroup; path = GreenEdgeOverlay; sourceTree = "<group>"; children = (A10000000000000000000001,); };
+    A10000000000000000000006 = {isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (A10000000000000000000002,); };
+    A10000000000000000000007 = {isa = PBXNativeTarget; buildConfigurationList = A1000000000000000000000B; buildPhases = (A10000000000000000000008, A10000000000000000000009,); buildRules = (); dependencies = (); name = GreenEdgeOverlay; productName = GreenEdgeOverlay; productReference = A10000000000000000000002; productType = "com.apple.product-type.application"; };
+    A10000000000000000000008 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003,); runOnlyForDeploymentPostprocessing = 0; };
+    A10000000000000000000009 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+    A1000000000000000000000A = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 1600; }; buildConfigurationList = A1000000000000000000000C; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = A10000000000000000000004; productRefGroup = A10000000000000000000006; projectDirPath = ""; projectRoot = ""; targets = (A10000000000000000000007,); };
+    A1000000000000000000000B = {isa = XCConfigurationList; buildConfigurations = (A1000000000000000000000D, A1000000000000000000000E,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+    A1000000000000000000000C = {isa = XCConfigurationList; buildConfigurations = (A1000000000000000000000F, A10000000000000000000010,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+    A1000000000000000000000D = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = com.example.GreenEdgeOverlay; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; MACOSX_DEPLOYMENT_TARGET = 13.0; SDKROOT = macosx; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; CODE_SIGNING_ALLOWED = NO; }; name = Debug; };
+    A1000000000000000000000E = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = com.example.GreenEdgeOverlay; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; MACOSX_DEPLOYMENT_TARGET = 13.0; SDKROOT = macosx; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; CODE_SIGNING_ALLOWED = NO; }; name = Release; };
+    A1000000000000000000000F = {isa = XCBuildConfiguration; buildSettings = { }; name = Debug; };
+    A10000000000000000000010 = {isa = XCBuildConfiguration; buildSettings = { }; name = Release; };
+  };
+  rootObject = A1000000000000000000000A;
+}
