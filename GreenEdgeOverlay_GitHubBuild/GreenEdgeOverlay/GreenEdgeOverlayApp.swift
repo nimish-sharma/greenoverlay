@@ -1,45 +1,118 @@
 
 import SwiftUI
 import AppKit
+import Combine
 import CoreGraphics
 
-@MainActor
+// MARK: - Application
+
+@main
+struct GreenEdgeOverlayApp: App {
+    @StateObject private var settings = OverlaySettings()
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(settings)
+                .frame(minWidth: 500, minHeight: 650)
+                .onAppear {
+                    OverlayController.shared.configure(settings: settings)
+                }
+        }
+    }
+}
+
+// MARK: - Settings and Persistence
+
 final class OverlaySettings: ObservableObject {
-    static let shared = OverlaySettings()
 
     private let defaults = UserDefaults.standard
 
-    @Published var topOpacity: Double { didSet { save() } }
-    @Published var bottomOpacity: Double { didSet { save() } }
-    @Published var leftOpacity: Double { didSet { save() } }
-    @Published var rightOpacity: Double { didSet { save() } }
+    @Published var enabled: Bool {
+        didSet { save() }
+    }
 
-    @Published var topCM: Double { didSet { save() } }
-    @Published var bottomCM: Double { didSet { save() } }
-    @Published var leftCM: Double { didSet { save() } }
-    @Published var rightCM: Double { didSet { save() } }
+    @Published var topEnabled: Bool {
+        didSet { save() }
+    }
 
-    @Published var cornerRadius: Double { didSet { save() } }
-    @Published var enabled: Bool { didSet { save() } }
+    @Published var bottomEnabled: Bool {
+        didSet { save() }
+    }
+
+    @Published var leftEnabled: Bool {
+        didSet { save() }
+    }
+
+    @Published var rightEnabled: Bool {
+        didSet { save() }
+    }
+
+    @Published var topOpacity: Double {
+        didSet { save() }
+    }
+
+    @Published var bottomOpacity: Double {
+        didSet { save() }
+    }
+
+    @Published var leftOpacity: Double {
+        didSet { save() }
+    }
+
+    @Published var rightOpacity: Double {
+        didSet { save() }
+    }
+
+    @Published var topCM: Double {
+        didSet { save() }
+    }
+
+    @Published var bottomCM: Double {
+        didSet { save() }
+    }
+
+    @Published var leftCM: Double {
+        didSet { save() }
+    }
+
+    @Published var rightCM: Double {
+        didSet { save() }
+    }
+
+    @Published var cornerRadius: Double {
+        didSet { save() }
+    }
 
     init() {
-        let d = UserDefaults.standard
+        enabled = defaults.object(forKey: "enabled") as? Bool ?? true
 
-        topOpacity = d.object(forKey: "topOpacity") as? Double ?? 0.45
-        bottomOpacity = d.object(forKey: "bottomOpacity") as? Double ?? 0.45
-        leftOpacity = d.object(forKey: "leftOpacity") as? Double ?? 0.45
-        rightOpacity = d.object(forKey: "rightOpacity") as? Double ?? 0.45
+        topEnabled = defaults.object(forKey: "topEnabled") as? Bool ?? true
+        bottomEnabled = defaults.object(forKey: "bottomEnabled") as? Bool ?? true
+        leftEnabled = defaults.object(forKey: "leftEnabled") as? Bool ?? true
+        rightEnabled = defaults.object(forKey: "rightEnabled") as? Bool ?? true
 
-        topCM = d.object(forKey: "topCM") as? Double ?? 5
-        bottomCM = d.object(forKey: "bottomCM") as? Double ?? 5
-        leftCM = d.object(forKey: "leftCM") as? Double ?? 5
-        rightCM = d.object(forKey: "rightCM") as? Double ?? 5
+        topOpacity = defaults.object(forKey: "topOpacity") as? Double ?? 0.45
+        bottomOpacity = defaults.object(forKey: "bottomOpacity") as? Double ?? 0.45
+        leftOpacity = defaults.object(forKey: "leftOpacity") as? Double ?? 0.45
+        rightOpacity = defaults.object(forKey: "rightOpacity") as? Double ?? 0.45
 
-        cornerRadius = d.object(forKey: "cornerRadius") as? Double ?? 18
-        enabled = d.object(forKey: "enabled") as? Bool ?? true
+        topCM = defaults.object(forKey: "topCM") as? Double ?? 5.0
+        bottomCM = defaults.object(forKey: "bottomCM") as? Double ?? 5.0
+        leftCM = defaults.object(forKey: "leftCM") as? Double ?? 5.0
+        rightCM = defaults.object(forKey: "rightCM") as? Double ?? 5.0
+
+        cornerRadius = defaults.object(forKey: "cornerRadius") as? Double ?? 18.0
     }
 
     func save() {
+        defaults.set(enabled, forKey: "enabled")
+
+        defaults.set(topEnabled, forKey: "topEnabled")
+        defaults.set(bottomEnabled, forKey: "bottomEnabled")
+        defaults.set(leftEnabled, forKey: "leftEnabled")
+        defaults.set(rightEnabled, forKey: "rightEnabled")
+
         defaults.set(topOpacity, forKey: "topOpacity")
         defaults.set(bottomOpacity, forKey: "bottomOpacity")
         defaults.set(leftOpacity, forKey: "leftOpacity")
@@ -51,214 +124,73 @@ final class OverlaySettings: ObservableObject {
         defaults.set(rightCM, forKey: "rightCM")
 
         defaults.set(cornerRadius, forKey: "cornerRadius")
-        defaults.set(enabled, forKey: "enabled")
     }
 
     func reset() {
+        enabled = true
+
+        topEnabled = true
+        bottomEnabled = true
+        leftEnabled = true
+        rightEnabled = true
+
         topOpacity = 0.45
         bottomOpacity = 0.45
         leftOpacity = 0.45
         rightOpacity = 0.45
 
-        topCM = 5
-        bottomCM = 5
-        leftCM = 5
-        rightCM = 5
+        topCM = 5.0
+        bottomCM = 5.0
+        leftCM = 5.0
+        rightCM = 5.0
 
-        cornerRadius = 18
-        enabled = true
+        cornerRadius = 18.0
     }
 }
 
-struct EdgeStrip: View {
-    enum Side {
-        case top, bottom, left, right
-    }
+// MARK: - Overlay Controller
 
-    let side: Side
-    let opacity: Double
-    let radius: CGFloat
+final class OverlayController {
 
-    var body: some View {
-        let green = Color(red: 0, green: 1, blue: 0)
-        let transparent = green.opacity(0)
+    static let shared = OverlayController()
 
-        let fill: LinearGradient = {
-            switch side {
-            case .top:
-                return LinearGradient(
-                    stops: [
-                        .init(color: green.opacity(opacity), location: 0),
-                        .init(color: green.opacity(opacity * 0.72), location: 0.35),
-                        .init(color: transparent, location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+    private var settings: OverlaySettings?
+    private var cancellables = Set<AnyCancellable>()
 
-            case .bottom:
-                return LinearGradient(
-                    stops: [
-                        .init(color: green.opacity(opacity), location: 0),
-                        .init(color: green.opacity(opacity * 0.72), location: 0.35),
-                        .init(color: transparent, location: 1)
-                    ],
-                    startPoint: .bottom,
-                    endPoint: .top
-                )
+    private var panels: [CGDirectDisplayID: NSPanel] = [:]
 
-            case .left:
-                return LinearGradient(
-                    stops: [
-                        .init(color: green.opacity(opacity), location: 0),
-                        .init(color: green.opacity(opacity * 0.72), location: 0.35),
-                        .init(color: transparent, location: 1)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-
-            case .right:
-                return LinearGradient(
-                    stops: [
-                        .init(color: green.opacity(opacity), location: 0),
-                        .init(color: green.opacity(opacity * 0.72), location: 0.35),
-                        .init(color: transparent, location: 1)
-                    ],
-                    startPoint: .trailing,
-                    endPoint: .leading
-                )
-            }
-        }()
-
-        fill
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: radius,
-                    style: .continuous
-                )
-            )
-            .allowsHitTesting(false)
-    }
-}
-
-struct OverlayView: View {
-    @ObservedObject var settings: OverlaySettings
-    let screen: NSScreen
-
-    private func points(forCM cm: Double, horizontal: Bool) -> CGFloat {
-        let key = NSDeviceDescriptionKey("NSScreenNumber")
-
-        if let displayID = screen.deviceDescription[key] as? CGDirectDisplayID {
-            let size = CGDisplayScreenSize(displayID)
-            let physicalMM = horizontal ? size.width : size.height
-            let pointLength = horizontal ? screen.frame.width : screen.frame.height
-
-            if physicalMM > 0 {
-                return CGFloat(cm / (Double(physicalMM) / 10.0)) * pointLength
-            }
-        }
-
-        return CGFloat(cm) * 72.0 / 2.54
-    }
-
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .topLeading) {
-                if settings.enabled {
-                    VStack(spacing: 0) {
-                        EdgeStrip(
-                            side: .top,
-                            opacity: settings.topOpacity,
-                            radius: CGFloat(settings.cornerRadius)
-                        )
-                        .frame(
-                            height: min(
-                                points(forCM: settings.topCM, horizontal: false),
-                                proxy.size.height
-                            )
-                        )
-                        Spacer(minLength: 0)
-                    }
-
-                    HStack(spacing: 0) {
-                        EdgeStrip(
-                            side: .left,
-                            opacity: settings.leftOpacity,
-                            radius: CGFloat(settings.cornerRadius)
-                        )
-                        .frame(
-                            width: min(
-                                points(forCM: settings.leftCM, horizontal: true),
-                                proxy.size.width
-                            )
-                        )
-
-                        Spacer(minLength: 0)
-
-                        EdgeStrip(
-                            side: .right,
-                            opacity: settings.rightOpacity,
-                            radius: CGFloat(settings.cornerRadius)
-                        )
-                        .frame(
-                            width: min(
-                                points(forCM: settings.rightCM, horizontal: true),
-                                proxy.size.width
-                            )
-                        )
-                    }
-
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        EdgeStrip(
-                            side: .bottom,
-                            opacity: settings.bottomOpacity,
-                            radius: CGFloat(settings.cornerRadius)
-                        )
-                        .frame(
-                            height: min(
-                                points(forCM: settings.bottomCM, horizontal: false),
-                                proxy.size.height
-                            )
-                        )
-                    }
-                }
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-        }
-        .background(Color.clear)
-        .ignoresSafeArea()
-    }
-}
-
-@MainActor
-final class OverlayController: NSObject, NSApplicationDelegate {
-    private var panels: [NSPanel] = []
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        rebuildPanels()
-
+    private init() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(rebuildPanels),
+            selector: #selector(screenConfigurationChanged),
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(refreshVisibility),
-            name: .overlaySettingsChanged,
-            object: nil
-        )
     }
 
-    @objc private func rebuildPanels() {
-        panels.forEach { $0.orderOut(nil) }
-        panels.removeAll()
+    func configure(settings: OverlaySettings) {
+        self.settings = settings
 
-        // Only create overlays on external monitors.
+        settings.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                DispatchQueue.main.async {
+                    self?.updateOverlays()
+                }
+            }
+            .store(in: &cancellables)
+
+        updateOverlays()
+    }
+
+    @objc private func screenConfigurationChanged() {
+        updateOverlays()
+    }
+
+    private func updateOverlays() {
+        guard let settings = settings else { return }
+
+        // Only use external displays.
         let externalScreens = NSScreen.screens.filter { screen in
             guard let displayID = screen.deviceDescription[
                 NSDeviceDescriptionKey("NSScreenNumber")
@@ -266,183 +198,461 @@ final class OverlayController: NSObject, NSApplicationDelegate {
                 return false
             }
 
-            return !CGDisplayIsBuiltin(displayID)
+            // CGDisplayIsBuiltin returns 0 for an external display.
+            return CGDisplayIsBuiltin(displayID) == 0
         }
 
+        let activeIDs = Set(
+            externalScreens.compactMap { screen in
+                screen.deviceDescription[
+                    NSDeviceDescriptionKey("NSScreenNumber")
+                ] as? CGDirectDisplayID
+            }
+        )
+
+        // Remove panels for disconnected displays.
+        for (displayID, panel) in panels {
+            if !activeIDs.contains(displayID) {
+                panel.close()
+                panels.removeValue(forKey: displayID)
+            }
+        }
+
+        // Create or update panels.
         for screen in externalScreens {
-            let panel = NSPanel(
-                contentRect: screen.frame,
-                styleMask: [.borderless, .nonactivatingPanel],
-                backing: .buffered,
-                defer: false
-            )
+            guard let displayID = screen.deviceDescription[
+                NSDeviceDescriptionKey("NSScreenNumber")
+            ] as? CGDirectDisplayID else {
+                continue
+            }
 
-            panel.isOpaque = false
-            panel.backgroundColor = .clear
-            panel.hasShadow = false
-            panel.ignoresMouseEvents = true
+            if let panel = panels[displayID] {
+                panel.setFrame(screen.frame, display: true)
 
-            panel.level = NSWindow.Level(
-                rawValue: Int(CGWindowLevelForKey(.screenSaverWindow)) + 1
-            )
-
-            panel.collectionBehavior = [
-                .canJoinAllSpaces,
-                .fullScreenAuxiliary,
-                .stationary
-            ]
-
-            panel.contentView = NSHostingView(
-                rootView: OverlayView(
-                    settings: OverlaySettings.shared,
-                    screen: screen
-                )
-            )
-
-            panel.setFrame(screen.frame, display: true)
-            panel.orderFrontRegardless()
-            panels.append(panel)
+                if let hostingView = panel.contentView as? NSHostingView<OverlayView> {
+                    hostingView.rootView = OverlayView(
+                        settings: settings,
+                        screen: screen
+                    )
+                }
+            } else {
+                createPanel(for: screen, displayID: displayID, settings: settings)
+            }
         }
 
         refreshVisibility()
     }
 
-    @objc private func refreshVisibility() {
-        if OverlaySettings.shared.enabled {
-            panels.forEach { $0.orderFrontRegardless() }
-        } else {
-            panels.forEach { $0.orderOut(nil) }
-        }
+    private func createPanel(
+        for screen: NSScreen,
+        displayID: CGDirectDisplayID,
+        settings: OverlaySettings
+    ) {
+        let panel = NSPanel(
+            contentRect: screen.frame,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false,
+            screen: screen
+        )
+
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.ignoresMouseEvents = true
+        panel.level = .screenSaver
+
+        panel.collectionBehavior = [
+            .canJoinAllSpaces,
+            .fullScreenAuxiliary,
+            .stationary,
+            .ignoresCycle
+        ]
+
+        let hostingView = NSHostingView(
+            rootView: OverlayView(
+                settings: settings,
+                screen: screen
+            )
+        )
+
+        hostingView.frame = screen.frame
+        hostingView.autoresizingMask = [.width, .height]
+
+        panel.contentView = hostingView
+
+        panels[displayID] = panel
+
+        panel.orderFrontRegardless()
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(
-        _ sender: NSApplication
-    ) -> Bool {
-        return false
+    private func refreshVisibility() {
+        guard let settings = settings else { return }
+
+        for panel in panels.values {
+            if settings.enabled {
+                panel.orderFrontRegardless()
+            } else {
+                panel.orderOut(nil)
+            }
+        }
     }
 }
 
-extension Notification.Name {
-    static let overlaySettingsChanged =
-        Notification.Name("overlaySettingsChanged")
-}
+// MARK: - Overlay View
 
-struct ContentView: View {
-    @ObservedObject private var s = OverlaySettings.shared
+struct OverlayView: View {
 
-    private func edgeSlider(
-        _ label: String,
-        value: Binding<Double>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(label)
-                Spacer()
-                Text("\(value.wrappedValue, specifier: "%.1f") cm")
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-            Slider(value: value, in: 0...10, step: 0.1)
+    @ObservedObject var settings: OverlaySettings
+    let screen: NSScreen
+
+    private func points(forCM cm: Double) -> CGFloat {
+        guard let displayID = screen.deviceDescription[
+            NSDeviceDescriptionKey("NSScreenNumber")
+        ] as? CGDirectDisplayID else {
+            return CGFloat(cm * 72.0 / 2.54)
         }
-    }
 
-    private func opacitySlider(
-        _ label: String,
-        value: Binding<Double>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(label)
-                Spacer()
-                Text("\(Int(value.wrappedValue * 100))%")
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-            Slider(value: value, in: 0...1)
+        let physicalSize = CGDisplayScreenSize(displayID)
+
+        if physicalSize.width > 0 {
+            let pointsPerCM = screen.frame.width / (physicalSize.width / 10.0)
+            return CGFloat(cm) * pointsPerCM
         }
+
+        return CGFloat(cm * 72.0 / 2.54)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 13) {
+        GeometryReader { geometry in
+
+            ZStack(alignment: .topLeading) {
+
+                if settings.enabled {
+
+                    // TOP EDGE
+                    if settings.topEnabled {
+                        EdgeStrip(
+                            opacity: settings.topOpacity,
+                            direction: .top,
+                            cornerRadius: settings.cornerRadius
+                        )
+                        .frame(
+                            width: geometry.size.width,
+                            height: points(forCM: settings.topCM)
+                        )
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity,
+                            alignment: .top
+                        )
+                    }
+
+                    // BOTTOM EDGE
+                    if settings.bottomEnabled {
+                        EdgeStrip(
+                            opacity: settings.bottomOpacity,
+                            direction: .bottom,
+                            cornerRadius: settings.cornerRadius
+                        )
+                        .frame(
+                            width: geometry.size.width,
+                            height: points(forCM: settings.bottomCM)
+                        )
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity,
+                            alignment: .bottom
+                        )
+                    }
+
+                    // LEFT EDGE
+                    if settings.leftEnabled {
+                        EdgeStrip(
+                            opacity: settings.leftOpacity,
+                            direction: .left,
+                            cornerRadius: settings.cornerRadius
+                        )
+                        .frame(
+                            width: points(forCM: settings.leftCM),
+                            height: geometry.size.height
+                        )
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity,
+                            alignment: .leading
+                        )
+                    }
+
+                    // RIGHT EDGE
+                    if settings.rightEnabled {
+                        EdgeStrip(
+                            opacity: settings.rightOpacity,
+                            direction: .right,
+                            cornerRadius: settings.cornerRadius
+                        )
+                        .frame(
+                            width: points(forCM: settings.rightCM),
+                            height: geometry.size.height
+                        )
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity,
+                            alignment: .trailing
+                        )
+                    }
+                }
+            }
+            .frame(
+                width: geometry.size.width,
+                height: geometry.size.height
+            )
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+    }
+}
+
+// MARK: - Gradient Strip
+
+enum EdgeDirection {
+    case top
+    case bottom
+    case left
+    case right
+}
+
+struct EdgeStrip: View {
+
+    let opacity: Double
+    let direction: EdgeDirection
+    let cornerRadius: Double
+
+    var body: some View {
+
+        let green = Color(
+            red: 0.0,
+            green: 1.0,
+            blue: 0.0
+        )
+
+        let gradient = LinearGradient(
+            stops: [
+                .init(color: green.opacity(opacity), location: 0.0),
+                .init(color: green.opacity(opacity * 0.72), location: 0.35),
+                .init(color: green.opacity(opacity * 0.25), location: 0.7),
+                .init(color: .clear, location: 1.0)
+            ],
+            startPoint: startPoint,
+            endPoint: endPoint
+        )
+
+        gradient
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: cornerRadius,
+                    style: .continuous
+                )
+            )
+    }
+
+    private var startPoint: UnitPoint {
+        switch direction {
+        case .top: return .top
+        case .bottom: return .bottom
+        case .left: return .leading
+        case .right: return .trailing
+        }
+    }
+
+    private var endPoint: UnitPoint {
+        switch direction {
+        case .top: return .bottom
+        case .bottom: return .top
+        case .left: return .trailing
+        case .right: return .leading
+        }
+    }
+}
+
+// MARK: - Settings Interface
+
+struct ContentView: View {
+
+    @EnvironmentObject var settings: OverlaySettings
+
+    var body: some View {
+
+        VStack(spacing: 16) {
+
             HStack {
+                Image(systemName: "display")
+                    .font(.system(size: 26))
+
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Green Edge Overlay")
-                        .font(.title2.bold())
+                        .font(.title2)
+                        .fontWeight(.bold)
 
-                    Text("External monitor only • Auto-save enabled")
+                    Text("External monitor only")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
 
-                Toggle("On", isOn: $s.enabled)
+                Toggle("Enable", isOn: $settings.enabled)
+                    .toggleStyle(.switch)
                     .labelsHidden()
             }
 
             Divider()
 
-            Text("Independent edge widths")
-                .font(.headline)
+            ScrollView {
 
-            edgeSlider("Top width", value: $s.topCM)
-            edgeSlider("Bottom width", value: $s.bottomCM)
-            edgeSlider("Left width", value: $s.leftCM)
-            edgeSlider("Right width", value: $s.rightCM)
+                VStack(spacing: 18) {
 
-            Divider()
+                    EdgeControl(
+                        title: "Top Edge",
+                        isEnabled: $settings.topEnabled,
+                        opacity: $settings.topOpacity,
+                        width: $settings.topCM
+                    )
 
-            Text("Independent edge opacity")
-                .font(.headline)
+                    EdgeControl(
+                        title: "Bottom Edge",
+                        isEnabled: $settings.bottomEnabled,
+                        opacity: $settings.bottomOpacity,
+                        width: $settings.bottomCM
+                    )
 
-            opacitySlider("Top opacity", value: $s.topOpacity)
-            opacitySlider("Bottom opacity", value: $s.bottomOpacity)
-            opacitySlider("Left opacity", value: $s.leftOpacity)
-            opacitySlider("Right opacity", value: $s.rightOpacity)
+                    EdgeControl(
+                        title: "Left Edge",
+                        isEnabled: $settings.leftEnabled,
+                        opacity: $settings.leftOpacity,
+                        width: $settings.leftCM
+                    )
 
-            Divider()
+                    EdgeControl(
+                        title: "Right Edge",
+                        isEnabled: $settings.rightEnabled,
+                        opacity: $settings.rightOpacity,
+                        width: $settings.rightCM
+                    )
 
-            HStack {
-                Text("Corner rounding")
-                Spacer()
-                Text("\(Int(s.cornerRadius)) px")
-                    .foregroundStyle(.secondary)
-            }
+                    Divider()
 
-            Slider(value: $s.cornerRadius, in: 0...60, step: 1)
+                    VStack(alignment: .leading, spacing: 8) {
 
-            HStack {
-                Button("Reset to defaults") {
-                    s.reset()
+                        HStack {
+                            Text("Corner Radius")
+                                .fontWeight(.medium)
+
+                            Spacer()
+
+                            Text("\(Int(settings.cornerRadius))")
+                                .monospacedDigit()
+                                .foregroundColor(.secondary)
+                        }
+
+                        Slider(
+                            value: $settings.cornerRadius,
+                            in: 0...60
+                        )
+                    }
+
+                    Divider()
+
+                    Button("Reset to Defaults") {
+                        settings.reset()
+                    }
+                    .frame(maxWidth: .infinity)
                 }
+                .padding(.vertical, 8)
+            }
+
+            Divider()
+
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+
+                Text("Settings save automatically")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
 
                 Spacer()
-
-                Text("Settings saved automatically")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
-        .padding(22)
-        .frame(width: 410)
-        .onChange(of: s.enabled) { _ in
-            NotificationCenter.default.post(
-                name: .overlaySettingsChanged,
-                object: nil
-            )
-        }
+        .padding(20)
     }
 }
 
-@main
-struct GreenEdgeOverlayApp: App {
-    @NSApplicationDelegateAdaptor(OverlayController.self)
-    private var controller
+// MARK: - Individual Edge Controls
 
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
+struct EdgeControl: View {
+
+    let title: String
+
+    @Binding var isEnabled: Bool
+    @Binding var opacity: Double
+    @Binding var width: Double
+
+    var body: some View {
+
+        VStack(alignment: .leading, spacing: 10) {
+
+            HStack {
+
+                Toggle(title, isOn: $isEnabled)
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                Text(isEnabled ? "ON" : "OFF")
+                    .font(.caption)
+                    .foregroundColor(isEnabled ? .green : .secondary)
+            }
+
+            if isEnabled {
+
+                VStack(spacing: 8) {
+
+                    HStack {
+                        Text("Opacity")
+
+                        Spacer()
+
+                        Text("\(Int(opacity * 100))%")
+                            .monospacedDigit()
+                            .foregroundColor(.secondary)
+                    }
+
+                    Slider(
+                        value: $opacity,
+                        in: 0...1
+                    )
+
+                    HStack {
+                        Text("Width")
+
+                        Spacer()
+
+                        Text(String(format: "%.1f cm", width))
+                            .monospacedDigit()
+                            .foregroundColor(.secondary)
+                    }
+
+                    Slider(
+                        value: $width,
+                        in: 0.5...15.0
+                    )
+                }
+                .padding(.leading, 10)
+            }
         }
-        .windowResizability(.contentSize)
+        .padding(14)
+        .background(Color.gray.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
