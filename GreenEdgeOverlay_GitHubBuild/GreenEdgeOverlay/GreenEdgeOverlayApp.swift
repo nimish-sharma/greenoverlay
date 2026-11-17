@@ -7,11 +7,16 @@ import CoreGraphics
 final class OverlaySettings: ObservableObject {
     static let shared = OverlaySettings()
 
-    @Published var opacity: Double = 0.45
+    @Published var topOpacity: Double = 0.45
+    @Published var bottomOpacity: Double = 0.45
+    @Published var leftOpacity: Double = 0.45
+    @Published var rightOpacity: Double = 0.45
+
     @Published var topCM: Double = 5
     @Published var bottomCM: Double = 5
     @Published var leftCM: Double = 5
     @Published var rightCM: Double = 5
+
     @Published var cornerRadius: Double = 18
     @Published var enabled = true
 }
@@ -97,16 +102,11 @@ struct OverlayView: View {
 
         if let displayID = screen.deviceDescription[key] as? CGDirectDisplayID {
             let size = CGDisplayScreenSize(displayID)
-
             let physicalMM = horizontal ? size.width : size.height
-            let pointLength = horizontal
-                ? screen.frame.width
-                : screen.frame.height
+            let pointLength = horizontal ? screen.frame.width : screen.frame.height
 
             if physicalMM > 0 {
-                return CGFloat(
-                    cm / (Double(physicalMM) / 10.0)
-                ) * pointLength
+                return CGFloat(cm / (Double(physicalMM) / 10.0)) * pointLength
             }
         }
 
@@ -116,13 +116,11 @@ struct OverlayView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
-
                 if settings.enabled {
-
                     VStack(spacing: 0) {
                         EdgeStrip(
                             side: .top,
-                            opacity: settings.opacity,
+                            opacity: settings.topOpacity,
                             radius: CGFloat(settings.cornerRadius)
                         )
                         .frame(
@@ -131,14 +129,13 @@ struct OverlayView: View {
                                 proxy.size.height
                             )
                         )
-
                         Spacer(minLength: 0)
                     }
 
                     HStack(spacing: 0) {
                         EdgeStrip(
                             side: .left,
-                            opacity: settings.opacity,
+                            opacity: settings.leftOpacity,
                             radius: CGFloat(settings.cornerRadius)
                         )
                         .frame(
@@ -152,7 +149,7 @@ struct OverlayView: View {
 
                         EdgeStrip(
                             side: .right,
-                            opacity: settings.opacity,
+                            opacity: settings.rightOpacity,
                             radius: CGFloat(settings.cornerRadius)
                         )
                         .frame(
@@ -165,10 +162,9 @@ struct OverlayView: View {
 
                     VStack(spacing: 0) {
                         Spacer(minLength: 0)
-
                         EdgeStrip(
                             side: .bottom,
-                            opacity: settings.opacity,
+                            opacity: settings.bottomOpacity,
                             radius: CGFloat(settings.cornerRadius)
                         )
                         .frame(
@@ -180,10 +176,7 @@ struct OverlayView: View {
                     }
                 }
             }
-            .frame(
-                width: proxy.size.width,
-                height: proxy.size.height
-            )
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .background(Color.clear)
         .ignoresSafeArea()
@@ -192,7 +185,6 @@ struct OverlayView: View {
 
 @MainActor
 final class OverlayController: NSObject, NSApplicationDelegate {
-
     private var panels: [NSPanel] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -218,7 +210,6 @@ final class OverlayController: NSObject, NSApplicationDelegate {
         panels.removeAll()
 
         for screen in NSScreen.screens {
-
             let panel = NSPanel(
                 contentRect: screen.frame,
                 styleMask: [.borderless, .nonactivatingPanel],
@@ -230,13 +221,9 @@ final class OverlayController: NSObject, NSApplicationDelegate {
             panel.backgroundColor = .clear
             panel.hasShadow = false
             panel.ignoresMouseEvents = true
-
             panel.level = NSWindow.Level(
-                rawValue: Int(
-                    CGWindowLevelForKey(.screenSaverWindow)
-                ) + 1
+                rawValue: Int(CGWindowLevelForKey(.screenSaverWindow)) + 1
             )
-
             panel.collectionBehavior = [
                 .canJoinAllSpaces,
                 .fullScreenAuxiliary,
@@ -252,7 +239,6 @@ final class OverlayController: NSObject, NSApplicationDelegate {
 
             panel.setFrame(screen.frame, display: true)
             panel.orderFrontRegardless()
-
             panels.append(panel)
         }
 
@@ -280,38 +266,46 @@ extension Notification.Name {
 }
 
 struct ContentView: View {
-
     @ObservedObject private var s = OverlaySettings.shared
 
     private func edgeSlider(
         _ label: String,
         value: Binding<Double>
     ) -> some View {
-
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(label)
-
                 Spacer()
-
                 Text("\(value.wrappedValue, specifier: "%.1f") cm")
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
-
             Slider(value: value, in: 0...10, step: 0.1)
         }
     }
 
+    private func opacitySlider(
+        _ label: String,
+        value: Binding<Double>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                Spacer()
+                Text("\(Int(value.wrappedValue * 100))%")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: value, in: 0...1)
+        }
+    }
+
     var body: some View {
-
-        VStack(alignment: .leading, spacing: 15) {
-
+        VStack(alignment: .leading, spacing: 13) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Green Edge Overlay")
                         .font(.title2.bold())
-
                     Text("Solid RGB green • strongest at bezel")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -323,37 +317,31 @@ struct ContentView: View {
                     .labelsHidden()
             }
 
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Text("Green opacity")
-
-                    Spacer()
-
-                    Text("\(Int(s.opacity * 100))%")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-
-                Slider(value: $s.opacity, in: 0...1)
-            }
-
             Divider()
 
             Text("Independent edge widths")
                 .font(.headline)
 
-            edgeSlider("Top", value: $s.topCM)
-            edgeSlider("Bottom", value: $s.bottomCM)
-            edgeSlider("Left", value: $s.leftCM)
-            edgeSlider("Right", value: $s.rightCM)
+            edgeSlider("Top width", value: $s.topCM)
+            edgeSlider("Bottom width", value: $s.bottomCM)
+            edgeSlider("Left width", value: $s.leftCM)
+            edgeSlider("Right width", value: $s.rightCM)
+
+            Divider()
+
+            Text("Independent edge opacity")
+                .font(.headline)
+
+            opacitySlider("Top opacity", value: $s.topOpacity)
+            opacitySlider("Bottom opacity", value: $s.bottomOpacity)
+            opacitySlider("Left opacity", value: $s.leftOpacity)
+            opacitySlider("Right opacity", value: $s.rightOpacity)
 
             Divider()
 
             HStack {
                 Text("Corner rounding")
-
                 Spacer()
-
                 Text("\(Int(s.cornerRadius)) px")
                     .foregroundStyle(.secondary)
             }
@@ -362,11 +350,16 @@ struct ContentView: View {
 
             HStack {
                 Button("Reset") {
-                    s.opacity = 0.45
+                    s.topOpacity = 0.45
+                    s.bottomOpacity = 0.45
+                    s.leftOpacity = 0.45
+                    s.rightOpacity = 0.45
+
                     s.topCM = 5
                     s.bottomCM = 5
                     s.leftCM = 5
                     s.rightCM = 5
+
                     s.cornerRadius = 18
                     s.enabled = true
                 }
@@ -379,9 +372,7 @@ struct ContentView: View {
             }
         }
         .padding(22)
-        .frame(width: 390)
-
-        // macOS 13 compatible onChange syntax
+        .frame(width: 410)
         .onChange(of: s.enabled) { _ in
             NotificationCenter.default.post(
                 name: .overlaySettingsChanged,
@@ -393,7 +384,6 @@ struct ContentView: View {
 
 @main
 struct GreenEdgeOverlayApp: App {
-
     @NSApplicationDelegateAdaptor(OverlayController.self)
     private var controller
 
