@@ -7,18 +7,67 @@ import CoreGraphics
 final class OverlaySettings: ObservableObject {
     static let shared = OverlaySettings()
 
-    @Published var topOpacity: Double = 0.45
-    @Published var bottomOpacity: Double = 0.45
-    @Published var leftOpacity: Double = 0.45
-    @Published var rightOpacity: Double = 0.45
+    private let defaults = UserDefaults.standard
 
-    @Published var topCM: Double = 5
-    @Published var bottomCM: Double = 5
-    @Published var leftCM: Double = 5
-    @Published var rightCM: Double = 5
+    @Published var topOpacity: Double { didSet { save() } }
+    @Published var bottomOpacity: Double { didSet { save() } }
+    @Published var leftOpacity: Double { didSet { save() } }
+    @Published var rightOpacity: Double { didSet { save() } }
 
-    @Published var cornerRadius: Double = 18
-    @Published var enabled = true
+    @Published var topCM: Double { didSet { save() } }
+    @Published var bottomCM: Double { didSet { save() } }
+    @Published var leftCM: Double { didSet { save() } }
+    @Published var rightCM: Double { didSet { save() } }
+
+    @Published var cornerRadius: Double { didSet { save() } }
+    @Published var enabled: Bool { didSet { save() } }
+
+    init() {
+        let d = UserDefaults.standard
+
+        topOpacity = d.object(forKey: "topOpacity") as? Double ?? 0.45
+        bottomOpacity = d.object(forKey: "bottomOpacity") as? Double ?? 0.45
+        leftOpacity = d.object(forKey: "leftOpacity") as? Double ?? 0.45
+        rightOpacity = d.object(forKey: "rightOpacity") as? Double ?? 0.45
+
+        topCM = d.object(forKey: "topCM") as? Double ?? 5
+        bottomCM = d.object(forKey: "bottomCM") as? Double ?? 5
+        leftCM = d.object(forKey: "leftCM") as? Double ?? 5
+        rightCM = d.object(forKey: "rightCM") as? Double ?? 5
+
+        cornerRadius = d.object(forKey: "cornerRadius") as? Double ?? 18
+        enabled = d.object(forKey: "enabled") as? Bool ?? true
+    }
+
+    func save() {
+        defaults.set(topOpacity, forKey: "topOpacity")
+        defaults.set(bottomOpacity, forKey: "bottomOpacity")
+        defaults.set(leftOpacity, forKey: "leftOpacity")
+        defaults.set(rightOpacity, forKey: "rightOpacity")
+
+        defaults.set(topCM, forKey: "topCM")
+        defaults.set(bottomCM, forKey: "bottomCM")
+        defaults.set(leftCM, forKey: "leftCM")
+        defaults.set(rightCM, forKey: "rightCM")
+
+        defaults.set(cornerRadius, forKey: "cornerRadius")
+        defaults.set(enabled, forKey: "enabled")
+    }
+
+    func reset() {
+        topOpacity = 0.45
+        bottomOpacity = 0.45
+        leftOpacity = 0.45
+        rightOpacity = 0.45
+
+        topCM = 5
+        bottomCM = 5
+        leftCM = 5
+        rightCM = 5
+
+        cornerRadius = 18
+        enabled = true
+    }
 }
 
 struct EdgeStrip: View {
@@ -209,7 +258,18 @@ final class OverlayController: NSObject, NSApplicationDelegate {
         panels.forEach { $0.orderOut(nil) }
         panels.removeAll()
 
-        for screen in NSScreen.screens {
+        // Only create overlays on external monitors.
+        let externalScreens = NSScreen.screens.filter { screen in
+            guard let displayID = screen.deviceDescription[
+                NSDeviceDescriptionKey("NSScreenNumber")
+            ] as? CGDirectDisplayID else {
+                return false
+            }
+
+            return !CGDisplayIsBuiltin(displayID)
+        }
+
+        for screen in externalScreens {
             let panel = NSPanel(
                 contentRect: screen.frame,
                 styleMask: [.borderless, .nonactivatingPanel],
@@ -221,9 +281,11 @@ final class OverlayController: NSObject, NSApplicationDelegate {
             panel.backgroundColor = .clear
             panel.hasShadow = false
             panel.ignoresMouseEvents = true
+
             panel.level = NSWindow.Level(
                 rawValue: Int(CGWindowLevelForKey(.screenSaverWindow)) + 1
             )
+
             panel.collectionBehavior = [
                 .canJoinAllSpaces,
                 .fullScreenAuxiliary,
@@ -306,7 +368,8 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Green Edge Overlay")
                         .font(.title2.bold())
-                    Text("Solid RGB green • strongest at bezel")
+
+                    Text("External monitor only • Auto-save enabled")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -349,24 +412,13 @@ struct ContentView: View {
             Slider(value: $s.cornerRadius, in: 0...60, step: 1)
 
             HStack {
-                Button("Reset") {
-                    s.topOpacity = 0.45
-                    s.bottomOpacity = 0.45
-                    s.leftOpacity = 0.45
-                    s.rightOpacity = 0.45
-
-                    s.topCM = 5
-                    s.bottomCM = 5
-                    s.leftCM = 5
-                    s.rightCM = 5
-
-                    s.cornerRadius = 18
-                    s.enabled = true
+                Button("Reset to defaults") {
+                    s.reset()
                 }
 
                 Spacer()
 
-                Text("Click-through • all displays")
+                Text("Settings saved automatically")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
